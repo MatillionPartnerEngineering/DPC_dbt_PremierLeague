@@ -1,0 +1,141 @@
+type: "orchestration"
+version: "1.0"
+pipeline:
+  components:
+    Start:
+      type: "start"
+      transitions:
+        unconditional:
+        - "Yesterday's Date"
+        - "Premier League"
+      parameters:
+        componentName: "Start"
+    Premier League:
+      type: "modular-api-extract-input-v1"
+      transitions:
+        unconditional:
+        - "And"
+      parameters:
+        componentName: "Premier League"
+        inputId: "api-extract-input-v1"
+        api-extract-input-v1:
+          profile: "custom-a34da799-8276-401d-ad6a-0b52e9b243b7"
+          endpoint: "Red Card Leaders"
+          connectionRef:
+            authType: "NONE"
+          uriParams:
+          queryParams:
+          - name: "league"
+            value: "39"
+          - name: "season"
+            value: "2022"
+          headerParams:
+          - name: "X-RapidAPI-Key"
+            value: "ffcbe1c542msh9dc112366802618p1962a4jsnc0f8a1c434aa"
+          - name: "X-RapidAPI-Host"
+            value: "api-football-v1.p.rapidapi.com"
+          postBody:
+          pageLimit:
+        outputId: "snowflake-output-connector-v0"
+        snowflake-output-connector-v0:
+          warehouse: "[Environment Default]"
+          database: "[Environment Default]"
+          schema: "[Environment Default]"
+          tableName: "REDCARDS_SEMISTRUCTURED"
+          createTableMode: "REPLACE_IF_EXISTS"
+          cleanStagedFiles: "Yes"
+          stagePlatform: "SNOWFLAKE"
+          snowflake#internalStageType: "USER"
+    Yesterday's Date:
+      type: "python-pushdown"
+      transitions:
+        unconditional:
+        - "And"
+        - "Python Pushdown"
+      parameters:
+        componentName: "Yesterday's Date"
+        externalAccessIntegrations:
+        packages:
+        pythonScript: |
+          from datetime import datetime, timedelta
+
+          # Get today's date
+          today = datetime.now()
+
+          # Calculate yesterday's date
+          yesterday = today - timedelta(days=1)
+
+          # Format yesterday's date
+          formatted_yesterday = yesterday.strftime('%Y-%m-%d %H:%M:%S.%f')[:-3]
+
+          print(formatted_yesterday)
+
+          context.updateVariable('orch_yestdate', formatted_yesterday)
+          # Updating a grid variable:
+          #   context.updateGridVariable('mygridvar',[['list','of'],['lists','!']])
+          ###)
+        scriptTimeout: "360"
+    And:
+      type: "and"
+      transitions:
+        unconditional:
+        - "Unpack JSON & Join Last Updated Date"
+      parameters:
+        componentName: "And"
+    Unpack JSON & Join Last Updated Date:
+      type: "run-transformation"
+      parameters:
+        componentName: "Unpack JSON & Join Last Updated Date"
+        transformationJob: "Red Cards Transformation"
+        setScalarVariables:
+        - - "xform_yestdate"
+          - "${orch_yestdate}"
+        setGridVariables:
+    Python Pushdown:
+      type: "python-pushdown"
+      parameters:
+        componentName: "Python Pushdown"
+        externalAccessIntegrations:
+        packages:
+        pythonScript: "print(orch_yestdate)"
+        scriptTimeout: "360"
+  variables:
+    orch_yestdate:
+      metadata:
+        type: "TEXT"
+        description: ""
+        scope: "COPIED"
+        visibility: "PUBLIC"
+      defaultValue: "1900-01-01"
+design:
+  components:
+    Start:
+      position:
+        x: -10
+        "y": 0
+      tempMetlId: 1
+    Premier League:
+      position:
+        x: 140
+        "y": 0
+      tempMetlId: 2
+    Yesterday's Date:
+      position:
+        x: 140
+        "y": 90
+      tempMetlId: 3
+    And:
+      position:
+        x: 280
+        "y": 0
+      tempMetlId: 4
+    Unpack JSON & Join Last Updated Date:
+      position:
+        x: 410
+        "y": 0
+      tempMetlId: 5
+    Python Pushdown:
+      position:
+        x: 290
+        "y": 90
+      tempMetlId: 6
