@@ -160,7 +160,7 @@ pipeline:
                 columnName: "DATA_VALUE"
                 aliasName: "response-element_player_id"
                 isArray: "false"
-                include: "false"
+                include: "true"
               - name: "birth"
                 datatype: "VARIANT"
                 size: "0"
@@ -752,7 +752,7 @@ pipeline:
           - ""
           - ""
         values:
-        - - "${xform_yestdate}"
+        - - "2024-02-20"
     Apply Data Freshness:
       type: "join"
       sources:
@@ -781,7 +781,9 @@ pipeline:
         - - "nested.red"
           - "RED"
         - - "date.DATE"
-          - "DATE"
+          - "LASTUPDATED"
+        - - "nested.response-element_player_id"
+          - "PLAYERID"
     Rewrite Table:
       type: "rewrite-table"
       sources:

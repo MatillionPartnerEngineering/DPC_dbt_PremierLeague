@@ -6,15 +6,14 @@ pipeline:
       type: "start"
       transitions:
         unconditional:
-        - "Yesterday's Date"
         - "Premier League"
       parameters:
         componentName: "Start"
     Premier League:
       type: "modular-api-extract-input-v1"
       transitions:
-        unconditional:
-        - "And"
+        success:
+        - "Unpack JSON & Join Last Updated Date"
       parameters:
         componentName: "Premier League"
         inputId: "api-extract-input-v1"
@@ -48,10 +47,6 @@ pipeline:
           snowflake#internalStageType: "USER"
     Yesterday's Date:
       type: "python-pushdown"
-      transitions:
-        unconditional:
-        - "And"
-        - "Python Pushdown"
       parameters:
         componentName: "Yesterday's Date"
         externalAccessIntegrations:
@@ -70,20 +65,16 @@ pipeline:
 
           print(formatted_yesterday)
 
-          context.updateVariable('orch_yestdate', formatted_yesterday)
+          context.updateVariable('proj_yest_date', formatted_yesterday)
           # Updating a grid variable:
           #   context.updateGridVariable('mygridvar',[['list','of'],['lists','!']])
           ###)
         scriptTimeout: "360"
-    And:
-      type: "and"
-      transitions:
-        unconditional:
-        - "Unpack JSON & Join Last Updated Date"
-      parameters:
-        componentName: "And"
     Unpack JSON & Join Last Updated Date:
       type: "run-transformation"
+      transitions:
+        success:
+        - "Grid Iterator"
       parameters:
         componentName: "Unpack JSON & Join Last Updated Date"
         transformationJob: "Red Cards Transformation"
@@ -91,14 +82,68 @@ pipeline:
         - - "xform_yestdate"
           - "${orch_yestdate}"
         setGridVariables:
-    Python Pushdown:
-      type: "python-pushdown"
+    Get Players Data:
+      type: "modular-api-extract-input-v1"
       parameters:
-        componentName: "Python Pushdown"
-        externalAccessIntegrations:
-        packages:
-        pythonScript: "print(orch_yestdate)"
-        scriptTimeout: "360"
+        componentName: "Get Players Data"
+        inputId: "api-extract-input-v1"
+        api-extract-input-v1:
+          profile: "custom-a34da799-8276-401d-ad6a-0b52e9b243b7"
+          endpoint: "Search Player"
+          connectionRef:
+            authType:
+            overrides: {}
+          uriParams:
+          queryParams:
+          headerParams:
+          postBody:
+          pageLimit:
+        outputId:
+    dbt debug:
+      type: "commands-for-dbt-core"
+      parameters:
+        componentName: "dbt debug"
+        command: "${pv_dbt_command}"
+        config:
+        mapDbtEnvironmentVariables:
+        - - "target_database"
+          - "ANALYTICS"
+        - - "target_schema"
+          - "PUBLIC"
+        dbtUrl: "https://github.com/MatillionPartnerEngineering/dbt_matillion_repo.git"
+        branch: "main"
+        gitFolderPath:
+        userName: "MatillionPartnerEngineering"
+        gitPassword: "kg_github_matillionpartnerengineering"
+        profileConfig:
+    dbt deps:
+      type: "commands-for-dbt-core"
+      parameters:
+        componentName: "dbt deps"
+        command: "dbt deps"
+        config:
+        mapDbtEnvironmentVariables:
+        - - "target_database"
+          - "ANALYTICS"
+        - - "target_schema"
+          - "PUBLIC"
+        dbtUrl: "https://github.com/MatillionPartnerEngineering/dbt_matillion_repo.git"
+        branch: "main"
+        gitFolderPath:
+        userName: "MatillionPartnerEngineering"
+        gitPassword: "kg_github_matillionpartnerengineering"
+        profileConfig:
+    Grid Iterator:
+      type: "grid-iterator"
+      iterationTarget: "dbt debug"
+      parameters:
+        componentName: "Grid Iterator"
+        gridVariable: "gv_dbt_commands"
+        gridIteratorVariableMapping:
+        - - "gvc_dbt_commands"
+          - "pv_dbt_command"
+        breakOnFailure: "No"
+        concurrency: "Sequential"
   variables:
     orch_yestdate:
       metadata:
@@ -106,7 +151,27 @@ pipeline:
         description: ""
         scope: "COPIED"
         visibility: "PUBLIC"
-      defaultValue: "1900-01-01"
+      defaultValue: "2024-02-19"
+    pv_dbt_command:
+      metadata:
+        type: "TEXT"
+        description: ""
+        scope: "COPIED"
+        visibility: "PUBLIC"
+      defaultValue: "DEFAULT pv_dbt_command"
+    gv_dbt_commands:
+      metadata:
+        type: "GRID"
+        description: ""
+        scope: "COPIED"
+        visibility: "PUBLIC"
+        columns:
+          gvc_dbt_commands:
+            columnType: "TEXT"
+      defaultValue:
+      - - "dbt debug"
+      - - "dbt source freshness"
+      - - "dbt build"
 design:
   components:
     Start:
@@ -121,21 +186,61 @@ design:
       tempMetlId: 2
     Yesterday's Date:
       position:
-        x: 140
-        "y": 90
-      tempMetlId: 3
-    And:
-      position:
         x: 280
-        "y": 0
-      tempMetlId: 4
+        "y": -180
+      tempMetlId: 3
     Unpack JSON & Join Last Updated Date:
       position:
-        x: 410
+        x: 300
         "y": 0
       tempMetlId: 5
-    Python Pushdown:
+    Get Players Data:
       position:
-        x: 290
-        "y": 90
-      tempMetlId: 6
+        x: 600
+        "y": -170
+      tempMetlId: 7
+    dbt debug:
+      position:
+        x: 470
+        "y": -10
+      tempMetlId: 8
+    dbt deps:
+      position:
+        x: 820
+        "y": -180
+      tempMetlId: 10
+    Grid Iterator:
+      position:
+        x: 470
+        "y": -10
+      tempMetlId: 12
+  notes:
+    "1":
+      position:
+        x: 470
+        "y": -260
+      size:
+        height: 158
+        width: 300
+      theme: "white"
+      content: "Once Query Result to Grid exists, can query for player IDs, feed as\
+        \ query params in API calls"
+    "2":
+      position:
+        x: 770
+        "y": -260
+      size:
+        height: 158
+        width: 230
+      theme: "white"
+      content: "Can't currently install packages"
+    "3":
+      position:
+        x: 160
+        "y": -260
+      size:
+        height: 158
+        width: 300
+      theme: "white"
+      content: "Once bug is set to allow values to carry to child jobs this can be\
+        \ used."
