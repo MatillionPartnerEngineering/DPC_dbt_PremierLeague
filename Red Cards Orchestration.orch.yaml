@@ -13,7 +13,7 @@ pipeline:
       type: "modular-api-extract-input-v1"
       transitions:
         success:
-        - "Unpack JSON & Join Last Updated Date"
+        - "Yesterday's Date"
       parameters:
         componentName: "Premier League"
         inputId: "api-extract-input-v1"
@@ -47,6 +47,9 @@ pipeline:
           snowflake#internalStageType: "USER"
     Yesterday's Date:
       type: "python-pushdown"
+      transitions:
+        success:
+        - "Unpack JSON & Join Last Updated Date"
       parameters:
         componentName: "Yesterday's Date"
         externalAccessIntegrations:
@@ -82,23 +85,6 @@ pipeline:
         - - "xform_yestdate"
           - "${orch_yestdate}"
         setGridVariables:
-    Get Players Data:
-      type: "modular-api-extract-input-v1"
-      parameters:
-        componentName: "Get Players Data"
-        inputId: "api-extract-input-v1"
-        api-extract-input-v1:
-          profile: "custom-a34da799-8276-401d-ad6a-0b52e9b243b7"
-          endpoint: "Search Player"
-          connectionRef:
-            authType:
-            overrides: {}
-          uriParams:
-          queryParams:
-          headerParams:
-          postBody:
-          pageLimit:
-        outputId:
     dbt debug:
       type: "commands-for-dbt-core"
       parameters:
@@ -111,7 +97,7 @@ pipeline:
         - - "target_schema"
           - "PUBLIC"
         dbtUrl: "https://github.com/MatillionPartnerEngineering/dbt_matillion_repo.git"
-        branch: "main"
+        branch: "webinar_1"
         gitFolderPath:
         userName: "MatillionPartnerEngineering"
         gitPassword: "kg_github_matillionpartnerengineering"
@@ -135,6 +121,9 @@ pipeline:
         profileConfig:
     Grid Iterator:
       type: "grid-iterator"
+      transitions:
+        success:
+        - "ChatGPT - Coach's advice"
       iterationTarget: "dbt debug"
       parameters:
         componentName: "Grid Iterator"
@@ -144,6 +133,64 @@ pipeline:
           - "pv_dbt_command"
         breakOnFailure: "No"
         concurrency: "Sequential"
+    ChatGPT - Coach's advice:
+      type: "ai-prompt"
+      parameters:
+        componentName: "ChatGPT - Coach's advice"
+        service:
+          provider: "OpenAI"
+          openAI:
+            model: "gpt-4"
+            apiKey: "kg_chatgpt2"
+            temperature: "1"
+            topP: "1"
+            "n": "1"
+            maxTokens:
+        source:
+          snowflake:
+            database: "[Environment Default]"
+            schema: "[Environment Default]"
+            table: "STG_REDCARDS_STRUCTURED"
+            keyColumn: "PLAYERNAME"
+            limit: "1000"
+        promptContext:
+          userContext: |-
+            I want you to imagine you're a coach of the player (PLAYERNAME) from the same country (NATIONALITY) as the player. Evaluate the performance of the player using the statistics provided in columns, which include:
+            - the number of shots by the player on the opposing goal (SHOTS_ONGOAL; SHOTS_TOTAL)
+            - the number of fouls committed and drawn by the player (FOULS_COMMITTED; FOULS_DRAWN)
+            - the number of goals assisted and scored by the player (GOALS_ASSISTS: GOALS_TOTAL)
+            - the number of cards drawn on the player (SUMCARDS)
+            Using the information, give the player advice in the language of the NATIONALITY field to help improve the players' game towards becoming a better player in the Premier League and helping their team (TEAMNAME) win more matches.
+          inputs:
+          - - "NATIONALITY"
+            - ""
+          - - "PLAYERNAME"
+            - ""
+          - - "TEAMNAME"
+            - ""
+          - - "SHOTS_ONGOAL"
+            - ""
+          - - "SHOTS_TOTAL"
+            - ""
+          - - "FOULS_COMMITTED"
+            - ""
+          - - "FOULS_DRAWN"
+            - ""
+          - - "GOALS_ASSISTS"
+            - ""
+          - - "GOALS_TOTAL"
+            - ""
+          - - "SUMCARDS"
+            - ""
+          outputFormat: "TEXT"
+        ragConfig:
+          isRagEnabled: "No"
+        destination:
+          snowflake:
+            database: "[Environment Default]"
+            schema: "[Environment Default]"
+            table: "REDCARDS_GPT"
+            createTableOptions: "Replace if Table Exists"
   variables:
     orch_yestdate:
       metadata:
@@ -176,32 +223,27 @@ design:
   components:
     Start:
       position:
-        x: -10
+        x: -150
         "y": 0
       tempMetlId: 1
     Premier League:
       position:
-        x: 140
+        x: -10
         "y": 0
       tempMetlId: 2
     Yesterday's Date:
       position:
-        x: 280
-        "y": -180
+        x: 140
+        "y": 0
       tempMetlId: 3
     Unpack JSON & Join Last Updated Date:
       position:
         x: 300
         "y": 0
       tempMetlId: 5
-    Get Players Data:
-      position:
-        x: 600
-        "y": -170
-      tempMetlId: 7
     dbt debug:
       position:
-        x: 470
+        x: 460
         "y": -10
       tempMetlId: 8
     dbt deps:
@@ -211,9 +253,14 @@ design:
       tempMetlId: 10
     Grid Iterator:
       position:
-        x: 470
+        x: 460
         "y": -10
       tempMetlId: 12
+    ChatGPT - Coach's advice:
+      position:
+        x: 610
+        "y": 0
+      tempMetlId: 13
   notes:
     "1":
       position:
@@ -244,3 +291,20 @@ design:
       theme: "white"
       content: "Once bug is set to allow values to carry to child jobs this can be\
         \ used."
+    "4":
+      position:
+        x: -680
+        "y": -270
+      size:
+        height: 578
+        width: 400
+      theme: "white"
+      content: "BYOGit Webinar Demo Workflow\n1. Setup\n\n1a. Create new Github account\
+        \ and install app from marketplace- @kareygrahamgithubwebinartest1\n\n1b.\
+        \ Create & initialize repo\n\n1c. Create new Matillion Hub project with \n\
+        \n2. Advanced Settings In Action\n\n2a. dbt Premier League\nOnce finished\
+        \ send to Richard Lewis\n\n2b. Create new branch off main, which has a job\
+        \ in Production\n\n2c. Two devs working on same project - move to v2 version\
+        \ of webinar\n\n2d. Git actions - Hard reset; Commit; Push to remote\n\n2e.\
+        \ Show DPL in Github Repo\n\n2f. Merge to main (Production aka default branch)\n\
+        \n2g. Pull from Remote into new DPC Project"
