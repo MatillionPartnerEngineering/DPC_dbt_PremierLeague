@@ -78,6 +78,7 @@ pipeline:
       transitions:
         success:
         - "Grid Iterator"
+        - "Grid Iterator 2"
       parameters:
         componentName: "Unpack JSON & Join Last Updated Date"
         transformationJob: "Red Cards Transformation"
@@ -191,6 +192,34 @@ pipeline:
             schema: "[Environment Default]"
             table: "REDCARDS_GPT"
             createTableOptions: "Replace if Table Exists"
+    Grid Iterator 2:
+      type: "grid-iterator"
+      iterationTarget: "dbt debug 2"
+      parameters:
+        componentName: "Grid Iterator 2"
+        gridVariable: "gv_dbt_commands"
+        gridIteratorVariableMapping:
+        - - "gvc_dbt_commands"
+          - "pv_dbt_command"
+        breakOnFailure: "No"
+        concurrency: "Sequential"
+    dbt debug 2:
+      type: "commands-for-dbt-core"
+      parameters:
+        componentName: "dbt debug 2"
+        command: "${pv_dbt_command}"
+        config:
+        mapDbtEnvironmentVariables:
+        - - "target_database"
+          - "ANALYTICS"
+        - - "target_schema"
+          - "PUBLIC"
+        dbtUrl: "https://github.com/MatillionPartnerEngineering/dbt_matillion_repo.git"
+        branch: "webinar_1"
+        gitFolderPath:
+        userName: "MatillionPartnerEngineering"
+        gitPassword: "kg_github_matillionpartnerengineering"
+        profileConfig:
   variables:
     orch_yestdate:
       metadata:
@@ -261,6 +290,16 @@ design:
         x: 610
         "y": 0
       tempMetlId: 13
+    Grid Iterator 2:
+      position:
+        x: 460
+        "y": 100
+      tempMetlId: 14
+    dbt debug 2:
+      position:
+        x: 460
+        "y": 100
+      tempMetlId: 15
   notes:
     "1":
       position:
