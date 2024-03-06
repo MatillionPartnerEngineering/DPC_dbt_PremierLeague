@@ -78,7 +78,6 @@ pipeline:
       transitions:
         success:
         - "Grid Iterator"
-        - "Grid Iterator 2"
       parameters:
         componentName: "Unpack JSON & Join Last Updated Date"
         transformationJob: "Red Cards Transformation"
@@ -91,34 +90,17 @@ pipeline:
       parameters:
         componentName: "dbt debug"
         command: "${pv_dbt_command}"
-        config:
-        mapDbtEnvironmentVariables:
-        - - "target_database"
-          - "ANALYTICS"
-        - - "target_schema"
-          - "PUBLIC"
         dbtUrl: "https://github.com/MatillionPartnerEngineering/dbt_matillion_repo.git"
         branch: "webinar_1"
         gitFolderPath:
         userName: "MatillionPartnerEngineering"
         gitPassword: "kg_github_matillionpartnerengineering"
-        profileConfig:
-    dbt deps:
-      type: "commands-for-dbt-core"
-      parameters:
-        componentName: "dbt deps"
-        command: "dbt deps"
-        config:
         mapDbtEnvironmentVariables:
         - - "target_database"
           - "ANALYTICS"
         - - "target_schema"
           - "PUBLIC"
-        dbtUrl: "https://github.com/MatillionPartnerEngineering/dbt_matillion_repo.git"
-        branch: "main"
-        gitFolderPath:
-        userName: "MatillionPartnerEngineering"
-        gitPassword: "kg_github_matillionpartnerengineering"
+        config:
         profileConfig:
     Grid Iterator:
       type: "grid-iterator"
@@ -192,34 +174,6 @@ pipeline:
             schema: "[Environment Default]"
             table: "REDCARDS_GPT"
             createTableOptions: "Replace if Table Exists"
-    Grid Iterator 2:
-      type: "grid-iterator"
-      iterationTarget: "dbt debug 2"
-      parameters:
-        componentName: "Grid Iterator 2"
-        gridVariable: "gv_dbt_commands"
-        gridIteratorVariableMapping:
-        - - "gvc_dbt_commands"
-          - "pv_dbt_command"
-        breakOnFailure: "No"
-        concurrency: "Sequential"
-    dbt debug 2:
-      type: "commands-for-dbt-core"
-      parameters:
-        componentName: "dbt debug 2"
-        command: "${pv_dbt_command}"
-        config:
-        mapDbtEnvironmentVariables:
-        - - "target_database"
-          - "ANALYTICS"
-        - - "target_schema"
-          - "PUBLIC"
-        dbtUrl: "https://github.com/MatillionPartnerEngineering/dbt_matillion_repo.git"
-        branch: "webinar_1"
-        gitFolderPath:
-        userName: "MatillionPartnerEngineering"
-        gitPassword: "kg_github_matillionpartnerengineering"
-        profileConfig:
   variables:
     orch_yestdate:
       metadata:
@@ -252,98 +206,89 @@ design:
   components:
     Start:
       position:
-        x: -150
+        x: -240
         "y": 0
       tempMetlId: 1
     Premier League:
       position:
-        x: -10
+        x: -50
         "y": 0
       tempMetlId: 2
     Yesterday's Date:
       position:
-        x: 140
+        x: 150
         "y": 0
       tempMetlId: 3
     Unpack JSON & Join Last Updated Date:
       position:
-        x: 300
+        x: 350
         "y": 0
       tempMetlId: 5
     dbt debug:
       position:
-        x: 460
+        x: 560
         "y": -10
       tempMetlId: 8
-    dbt deps:
-      position:
-        x: 820
-        "y": -180
-      tempMetlId: 10
     Grid Iterator:
       position:
-        x: 460
+        x: 560
         "y": -10
       tempMetlId: 12
     ChatGPT - Coach's advice:
       position:
-        x: 610
+        x: 790
         "y": 0
       tempMetlId: 13
-    Grid Iterator 2:
-      position:
-        x: 460
-        "y": 100
-      tempMetlId: 14
-    dbt debug 2:
-      position:
-        x: 460
-        "y": 100
-      tempMetlId: 15
   notes:
-    "1":
-      position:
-        x: 470
-        "y": -260
-      size:
-        height: 158
-        width: 300
-      theme: "white"
-      content: "Once Query Result to Grid exists, can query for player IDs, feed as\
-        \ query params in API calls"
-    "2":
-      position:
-        x: 770
-        "y": -260
-      size:
-        height: 158
-        width: 230
-      theme: "white"
-      content: "Can't currently install packages"
-    "3":
-      position:
-        x: 160
-        "y": -260
-      size:
-        height: 158
-        width: 300
-      theme: "white"
-      content: "Once bug is set to allow values to carry to child jobs this can be\
-        \ used."
     "4":
       position:
-        x: -680
-        "y": -270
+        x: -120
+        "y": -350
       size:
-        height: 578
-        width: 400
+        height: 450
+        width: 180
       theme: "white"
-      content: "BYOGit Webinar Demo Workflow\n1. Setup\n\n1a. Create new Github account\
-        \ and install app from marketplace- @kareygrahamgithubwebinartest1\n\n1b.\
-        \ Create & initialize repo\n\n1c. Create new Matillion Hub project with \n\
-        \n2. Advanced Settings In Action\n\n2a. dbt Premier League\nOnce finished\
-        \ send to Richard Lewis\n\n2b. Create new branch off main, which has a job\
-        \ in Production\n\n2c. Two devs working on same project - move to v2 version\
-        \ of webinar\n\n2d. Git actions - Hard reset; Commit; Push to remote\n\n2e.\
-        \ Show DPL in Github Repo\n\n2f. Merge to main (Production aka default branch)\n\
-        \n2g. Pull from Remote into new DPC Project"
+      content: "The **Premier League** component is a modular-api-extract-input transformation.\
+        \ It makes a call to the Red Card Leaders endpoint of the API Football v1\
+        \ API to retrieve red card data for the 2022 Premier League season. It extracts\
+        \ the results and outputs them to a Snowflake table called REDCARDS_SEMISTRUCTURED\
+        \ using the snowflake-output-connector."
+    "5":
+      position:
+        x: 80
+        "y": -280
+      size:
+        height: 380
+        width: 180
+      theme: "white"
+      content: "The **Yesterday's Date** component runs a Python script to extract\
+        \ yesterday's date. This date is then stored in the orchestration variable\
+        \ `${orch_yestdate}` and passed to subsequent components for use in filtering\
+        \ or partitioning data by date."
+    "6":
+      position:
+        x: 280
+        "y": -440
+      size:
+        height: 540
+        width: 180
+      theme: "white"
+      content: "The **Unpack JSON & Join Last Updated Date** transformation takes\
+        \ the JSON data extracted from the Premier League API and unpacks it into\
+        \ a structured format. It also joins the date variable `${orch_yestdate}`\
+        \ that was generated in the previous `Yesterday's Date` component to annotate\
+        \ each row with the date it was run. This prepares the data for further transformation\
+        \ and loading into the data warehouse."
+    "7":
+      position:
+        x: 480
+        "y": -340
+      size:
+        height: 440
+        width: 210
+      theme: "white"
+      content: "The **Grid Iterator** component iterates over the values in the `gv_dbt_commands`\
+        \ grid variable and runs the `dbt debug` component for each value, mapping\
+        \ the current grid value to the `pv_dbt_command` pipeline variable each time.\
+        \ This allows running multiple dbt commands like `dbt debug`, `dbt source\
+        \ freshness` and `dbt build` by specifying them in the grid variable."
